@@ -63,3 +63,17 @@ Verifique o endpoint de info:
 ```bash
 curl http://localhost:8080/actuator/info
 ```
+
+## Swagger
+
+Com a aplicacao em execucao, abra a interface do Swagger em:
+
+```bash
+http://localhost:8080/swagger-ui/index.html
+```
+
+Para validar a API rapidamente, teste o endpoint:
+
+```bash
+curl http://localhost:8080/hello
+```
