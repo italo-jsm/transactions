@@ -6,8 +6,11 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
 
 management:
   endpoints:
@@ -19,3 +22,8 @@ management:
       show-details: always
       probes:
         enabled: true
+
+logging:
+  level:
+    liquibase: INFO
+    org.springframework.boot.autoconfigure.liquibase: DEBUG
