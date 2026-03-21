@@ -1,9 +1,11 @@
 package com.italo.transactions.api.purchase;
 
 import com.italo.transactions.api.GlobalExceptionHandler;
+import com.italo.transactions.domain.service.PurchaseTransactionService;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
+import org.mockito.Mockito;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -18,8 +20,10 @@ class PurchaseTransactionControllerTest {
     private final ReloadableResourceBundleMessageSource messageSource = messageSource();
     private final LocalValidatorFactoryBean validator = validator();
 
+    private final PurchaseTransactionService service = Mockito.mock(PurchaseTransactionService.class);
+
     private final MockMvc mockMvc = MockMvcBuilders
-            .standaloneSetup(new PurchaseTransactionController())
+            .standaloneSetup(new PurchaseTransactionController(service))
             .setControllerAdvice(new GlobalExceptionHandler(messageSource))
             .setValidator(validator)
             .build();
