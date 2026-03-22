@@ -21,7 +21,7 @@ public class PurchaseTransactionJpaRepository implements PurchaseTransactionsRep
     }
 
     @Override
-    public Optional<PurchaseTransaction> findBydId(UUID transactionId) {
+    public Optional<PurchaseTransaction> findById(UUID transactionId) {
         return purchaseTransactionJpaAdapter.findById(transactionId).map(PurchaseTransactionEntity::toDomain);
     }
 }

@@ -61,7 +61,8 @@ class PurchaseTransactionControllerTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "http://localhost/purchase-transactions/" + generatedId));
+                .andExpect(header().string("Location", "http://localhost/purchase-transactions/" + generatedId))
+                .andExpect(jsonPath("$.purchaseId").value(generatedId.toString()));
 
         verify(service).create(transactionCaptor.capture());
         assertThat(transactionCaptor.getValue().description()).isEqualTo("Notebook");
@@ -237,6 +238,14 @@ class PurchaseTransactionControllerTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("country"))
                 .andExpect(jsonPath("$.fieldErrors[0].message").value("country is required"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCountryIsMissing() throws Exception {
+        UUID transactionId = UUID.randomUUID();
+
+        mockMvc.perform(get("/purchase-transactions/{id}", transactionId))
+                .andExpect(status().isBadRequest());
     }
 
     private ReloadableResourceBundleMessageSource messageSource() {

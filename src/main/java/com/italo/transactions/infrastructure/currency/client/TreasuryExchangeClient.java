@@ -28,6 +28,7 @@ import java.net.SocketTimeoutException;
 public class TreasuryExchangeClient {
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
+    private static final int CURRENCY_PAGE_SIZE = 500;
 
     private final RestClient restClient;
     private final String path;
@@ -100,14 +101,36 @@ public class TreasuryExchangeClient {
     }
 
     public List<String> getAllCurrencies() {
+        List<String> currencies = new ArrayList<>();
 
-        TreasuryApiResponse response;
+        for (int pageNumber = 1; ; pageNumber++) {
+            TreasuryApiResponse response = fetchCurrenciesPage(pageNumber);
+            if (response == null || response.data() == null || response.data().isEmpty()) {
+                break;
+            }
+
+            response.data().stream()
+                    .map(TreasuryRateDto::countryCurrencyDesc)
+                    .forEach(currencies::add);
+
+            if (response.data().size() < CURRENCY_PAGE_SIZE) {
+                break;
+            }
+        }
+
+        return currencies.stream()
+                .distinct()
+                .toList();
+    }
+
+    private TreasuryApiResponse fetchCurrenciesPage(int pageNumber) {
         try {
-            response = restClient.get()
+            return restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path(path)
                             .queryParam("fields", "country_currency_desc")
-                            .queryParam("page[size]", "500")
+                            .queryParam("page[size]", String.valueOf(CURRENCY_PAGE_SIZE))
+                            .queryParam("page[number]", String.valueOf(pageNumber))
                             .build())
                     .retrieve()
                     .body(TreasuryApiResponse.class);
@@ -116,15 +139,6 @@ public class TreasuryExchangeClient {
         } catch (RestClientException exception) {
             throw mapDependencyException(exception);
         }
-
-        if (response == null || response.data() == null) {
-            return List.of();
-        }
-
-        return response.data().stream()
-                .map(TreasuryRateDto::countryCurrencyDesc)
-                .distinct()
-                .toList();
     }
 
     private RuntimeException mapTimeoutException(ResourceAccessException exception) {

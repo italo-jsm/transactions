@@ -7,7 +7,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yaml
@@ -28,6 +28,7 @@ treasury:
     base-url: ${TREASURY_API_URL:https://api.fiscaldata.treasury.gov/services/api/fiscal_service}
     path: ${TREASURY_API_PATH:/v1/accounting/od/rates_of_exchange}
     timeout: ${TREASURY_API_TIMEOUT:3s}
+    currencies-cache-ttl: ${TREASURY_API_CURRENCIES_CACHE_TTL:6h}
 
 
 logging:

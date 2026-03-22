@@ -8,5 +8,5 @@ import java.util.UUID;
 public interface PurchaseTransactionsRepository {
 
     UUID savePurchaseTransaction(PurchaseTransaction purchaseTransaction);
-    Optional<PurchaseTransaction> findBydId(UUID transactionId);
+    Optional<PurchaseTransaction> findById(UUID transactionId);
 }

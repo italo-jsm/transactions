@@ -73,7 +73,7 @@ class PurchaseTransactionServiceTest {
                 LocalDate.of(2026, 3, 1)
         );
 
-        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));
+        when(purchaseTransactionsRepository.findById(transactionId)).thenReturn(Optional.of(purchaseTransaction));
         when(currencyConverter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction))
                 .thenReturn(Optional.of(convertedTransaction));
 
@@ -97,7 +97,7 @@ class PurchaseTransactionServiceTest {
                 LocalDate.of(2025, 9, 21)
         );
 
-        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));
+        when(purchaseTransactionsRepository.findById(transactionId)).thenReturn(Optional.of(purchaseTransaction));
         when(currencyConverter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction))
                 .thenReturn(Optional.of(convertedTransaction));
 
@@ -110,7 +110,7 @@ class PurchaseTransactionServiceTest {
     void shouldThrowEntityNotFoundWhenPurchaseTransactionDoesNotExist() {
         UUID transactionId = UUID.randomUUID();
 
-        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.empty());
+        when(purchaseTransactionsRepository.findById(transactionId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> purchaseTransactionService.getTransactionInCountryCurrency(transactionId, "Brazil"))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -127,7 +127,7 @@ class PurchaseTransactionServiceTest {
                 new BigDecimal("100.00")
         );
 
-        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));
+        when(purchaseTransactionsRepository.findById(transactionId)).thenReturn(Optional.of(purchaseTransaction));
         when(currencyConverter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction))
                 .thenReturn(Optional.empty());
 
@@ -151,7 +151,7 @@ class PurchaseTransactionServiceTest {
                 LocalDate.of(2025, 9, 20)
         );
 
-        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));
+        when(purchaseTransactionsRepository.findById(transactionId)).thenReturn(Optional.of(purchaseTransaction));
         when(currencyConverter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction))
                 .thenReturn(Optional.of(convertedTransaction));
 

@@ -24,13 +24,21 @@ public class PurchaseTransactionService {
     }
 
     public CountryPurchaseTransaction getTransactionInCountryCurrency(UUID transactionId, String country){
-        PurchaseTransaction purchaseTransaction = purchaseTransactionsRepository.findBydId(transactionId).orElseThrow(() -> new EntityNotFoundException("Purchase transaction not found"));
+        PurchaseTransaction purchaseTransaction = purchaseTransactionsRepository.findById(transactionId)
+                .orElseThrow(() -> new EntityNotFoundException("Purchase transaction not found"));
         CountryPurchaseTransaction countryPurchaseTransaction = currencyConverter
                 .convertPurchaseToCountryPurchaseTransaction(country, purchaseTransaction)
                 .orElseThrow(() -> new ExchangeRateNotFoundException("Exchange rate not for the specified country"));
-        LocalDate limitDate = countryPurchaseTransaction.transactionDate().minusMonths(6);
-        if(!countryPurchaseTransaction.recordDate().isBefore(limitDate)){
+
+        if (isWithinAllowedConversionWindow(countryPurchaseTransaction)) {
             return countryPurchaseTransaction;
-        }else throw  new ExchangeRateNotFoundException("Exchange rate not found within 6 months for the specified country");
+        }
+
+        throw new ExchangeRateNotFoundException("Exchange rate not found within 6 months for the specified country");
+    }
+
+    private boolean isWithinAllowedConversionWindow(CountryPurchaseTransaction transaction) {
+        LocalDate limitDate = transaction.transactionDate().minusMonths(6);
+        return !transaction.recordDate().isBefore(limitDate);
     }
 }

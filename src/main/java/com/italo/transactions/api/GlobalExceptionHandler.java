@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
@@ -113,6 +114,15 @@ public class GlobalExceptionHandler {
                 .body(buildValidationErrorResponse(
                         "Request validation failed",
                         List.of(new ApiErrorResponse.FieldValidationError(field, "invalid value"))
+                ));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingServletRequestParameter(MissingServletRequestParameterException exception) {
+        return ResponseEntity.badRequest()
+                .body(buildValidationErrorResponse(
+                        "Request validation failed",
+                        List.of(new ApiErrorResponse.FieldValidationError(exception.getParameterName(), exception.getParameterName() + " is required"))
                 ));
     }
 

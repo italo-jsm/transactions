@@ -6,17 +6,21 @@ import com.italo.transactions.infrastructure.currency.client.TreasuryExchangeCli
 import com.italo.transactions.infrastructure.currency.client.dto.ExchangeRateResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,8 +30,13 @@ class TreasuryCurrencyConverterTest {
     @Mock
     private TreasuryExchangeClient treasuryExchangeClient;
 
-    @InjectMocks
-    private TreasuryCurrencyConverter treasuryCurrencyConverter;
+    private TreasuryCurrencyConverter treasuryCurrencyConverter() {
+        return new TreasuryCurrencyConverter(
+                treasuryExchangeClient,
+                Duration.ofHours(6),
+                Clock.fixed(Instant.parse("2026-03-22T00:00:00Z"), ZoneOffset.UTC)
+        );
+    }
 
     @Test
     void shouldLoadAvailableCurrenciesFromTreasuryApiOnDemand() {
@@ -48,13 +57,43 @@ class TreasuryCurrencyConverterTest {
         when(treasuryExchangeClient.findRate("Brazil-Real", purchaseTransaction.transactionDate()))
                 .thenReturn(Optional.of(exchangeRateResponse));
 
-        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter
+        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter()
                 .convertPurchaseToCountryPurchaseTransaction("brazil", purchaseTransaction);
 
         assertThat(convertedTransaction).isPresent();
         assertThat(convertedTransaction.orElseThrow().convertedPurchasedAmount()).isEqualByComparingTo("525.00");
         verify(treasuryExchangeClient).getAllCurrencies();
         verify(treasuryExchangeClient).findRate("Brazil-Real", purchaseTransaction.transactionDate());
+    }
+
+    @Test
+    void shouldReuseCurrenciesWithinCacheTtl() {
+        when(treasuryExchangeClient.getAllCurrencies()).thenReturn(List.of("Brazil-Real"));
+
+        TreasuryCurrencyConverter converter = new TreasuryCurrencyConverter(
+                treasuryExchangeClient,
+                Duration.ofHours(6),
+                Clock.fixed(Instant.parse("2026-03-22T00:00:00Z"), ZoneOffset.UTC)
+        );
+
+        PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
+                UUID.randomUUID(),
+                "Notebook",
+                LocalDate.of(2026, 3, 20),
+                new BigDecimal("100.00")
+        );
+
+        when(treasuryExchangeClient.findRate("Brazil-Real", purchaseTransaction.transactionDate()))
+                .thenReturn(Optional.of(new ExchangeRateResponse(
+                        "Brazil-Real",
+                        new BigDecimal("5.25"),
+                        LocalDate.of(2026, 3, 19)
+                )));
+
+        converter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction);
+        converter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction);
+
+        verify(treasuryExchangeClient, times(1)).getAllCurrencies();
     }
 
     @Test
@@ -68,7 +107,7 @@ class TreasuryCurrencyConverterTest {
                 new BigDecimal("100.00")
         );
 
-        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter
+        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter()
                 .convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction);
 
         assertThat(convertedTransaction).isEmpty();
@@ -88,7 +127,7 @@ class TreasuryCurrencyConverterTest {
         when(treasuryExchangeClient.findRate("Brazil-Real", purchaseTransaction.transactionDate()))
                 .thenReturn(Optional.empty());
 
-        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter
+        Optional<CountryPurchaseTransaction> convertedTransaction = treasuryCurrencyConverter()
                 .convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction);
 
         assertThat(convertedTransaction).isEmpty();

@@ -34,9 +34,23 @@ class TreasuryExchangeClientTest {
     static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>("mockserver/mockserver:5.15.0")
             .withExposedPorts(MOCK_SERVER_PORT);
 
+    private MockServerClient mockServerClient() {
+        if (!MOCK_SERVER.isRunning()) {
+            MOCK_SERVER.start();
+        }
+
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+        }
+
+        return new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+    }
+
     @Test
     void shouldReturnMostRecentRateForCountryBeforePurchaseDate() {
-        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        MockServerClient mockServerClient = mockServerClient();
         mockServerClient.reset();
         mockServerClient
                 .when(request()
@@ -76,7 +90,7 @@ class TreasuryExchangeClientTest {
 
     @Test
     void shouldThrowWhenTreasuryApiDoesNotReturnRates() {
-        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        MockServerClient mockServerClient = mockServerClient();
         mockServerClient.reset();
         mockServerClient
                 .when(request()
@@ -107,14 +121,15 @@ class TreasuryExchangeClientTest {
 
     @Test
     void shouldReturnDistinctCurrenciesFromTreasuryApi() {
-        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        MockServerClient mockServerClient = mockServerClient();
         mockServerClient.reset();
         mockServerClient
                 .when(request()
                         .withPath(PATH)
                         .withQueryStringParameters(
                                 Parameter.param("fields", "country_currency_desc"),
-                                Parameter.param("page[size]", "500")
+                                Parameter.param("page[size]", "500"),
+                                Parameter.param("page[number]", "1")
                         ))
                 .respond(response()
                         .withContentType(MediaType.APPLICATION_JSON)
@@ -140,14 +155,15 @@ class TreasuryExchangeClientTest {
 
     @Test
     void shouldReturnEmptyListWhenTreasuryApiResponseBodyIsEmpty() {
-        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        MockServerClient mockServerClient = mockServerClient();
         mockServerClient.reset();
         mockServerClient
                 .when(request()
                         .withPath(PATH)
                         .withQueryStringParameters(
                                 Parameter.param("fields", "country_currency_desc"),
-                                Parameter.param("page[size]", "500")
+                                Parameter.param("page[size]", "500"),
+                                Parameter.param("page[number]", "1")
                         ))
                 .respond(response()
                         .withStatusCode(200));
@@ -214,7 +230,7 @@ class TreasuryExchangeClientTest {
 
     @Test
     void shouldThrowExternalDependencyExceptionWhenTreasuryRespondsWithServerError() {
-        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        MockServerClient mockServerClient = mockServerClient();
         mockServerClient.reset();
         mockServerClient
                 .when(request()
@@ -235,5 +251,38 @@ class TreasuryExchangeClientTest {
         assertThatThrownBy(() -> client.findRate("Brazil-Real", LocalDate.of(2026, 3, 20)))
                 .isInstanceOf(ExternalDependencyException.class)
                 .hasMessage("Treasury API responded with status 500");
+    }
+
+    @Test
+    void shouldLoadCurrenciesFromMultiplePages() {
+        MockServerClient mockServerClient = mockServerClient();
+        mockServerClient.reset();
+        mockServerClient
+                .when(request()
+                        .withPath(PATH)
+                        .withQueryStringParameters(
+                                Parameter.param("fields", "country_currency_desc"),
+                                Parameter.param("page[size]", "500"),
+                                Parameter.param("page[number]", "1")
+                        ))
+                .respond(response()
+                        .withContentType(MediaType.APPLICATION_JSON)
+                        .withBody("""
+                                {
+                                  "data": [
+                                    {"country_currency_desc": "Brazil-Real"},
+                                    {"country_currency_desc": "Canada-Dollar"}
+                                  ]
+                                }
+                                """));
+
+        TreasuryExchangeClient client = new TreasuryExchangeClient(
+                "http://" + MOCK_SERVER.getHost() + ":" + MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT),
+                PATH
+        );
+
+        List<String> currencies = client.getAllCurrencies();
+
+        assertThat(currencies).containsExactly("Brazil-Real", "Canada-Dollar");
     }
 }
