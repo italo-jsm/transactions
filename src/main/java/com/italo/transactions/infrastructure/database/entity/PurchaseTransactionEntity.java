@@ -45,19 +45,12 @@ public class PurchaseTransactionEntity {
         );
     }
 
-    public void setPurchaseId(UUID purchaseId) {
-        this.purchaseId = purchaseId;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public void setTransactionDate(LocalDate transactionDate) {
-        this.transactionDate = transactionDate;
-    }
-
-    public void setPurchaseAmount(BigDecimal purchaseAmount) {
-        this.purchaseAmount = purchaseAmount;
+    public PurchaseTransaction toDomain() {
+        return PurchaseTransaction.create(
+                this.purchaseId,
+                this.description,
+                this.transactionDate,
+                this.purchaseAmount
+        );
     }
 }

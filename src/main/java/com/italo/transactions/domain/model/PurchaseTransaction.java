@@ -12,12 +12,13 @@ public record PurchaseTransaction(
 ) {
 
     public static PurchaseTransaction create(
+            UUID uuid,
             String description,
             LocalDate transactionDate,
             BigDecimal purchaseAmount
     ) {
         return new PurchaseTransaction(
-                UUID.randomUUID(),
+                uuid,
                 description,
                 transactionDate,
                 purchaseAmount

@@ -6,6 +6,7 @@ import com.italo.transactions.infrastructure.database.entity.PurchaseTransaction
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -17,5 +18,10 @@ public class PurchaseTransactionJpaRepository implements PurchaseTransactionsRep
     @Override
     public UUID savePurchaseTransaction(PurchaseTransaction purchaseTransaction) {
         return purchaseTransactionJpaAdapter.save(PurchaseTransactionEntity.fromDomain(purchaseTransaction)).getPurchaseId();
+    }
+
+    @Override
+    public Optional<PurchaseTransaction> findBydId(UUID transactionId) {
+        return purchaseTransactionJpaAdapter.findById(transactionId).map(PurchaseTransactionEntity::toDomain);
     }
 }

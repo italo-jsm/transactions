@@ -1,7 +1,8 @@
 package com.italo.transactions.api.purchase;
 
 import com.italo.transactions.api.purchase.requests.CreatePurchaseTransactionRequest;
-import com.italo.transactions.api.purchase.requests.GetPurchaseTransactionByCurrencyRequest;
+import com.italo.transactions.api.purchase.responses.GetPurchaseTransactionResponse;
+import com.italo.transactions.domain.model.CountryPurchaseTransaction;
 import com.italo.transactions.domain.model.PurchaseTransaction;
 import com.italo.transactions.domain.service.PurchaseTransactionService;
 import jakarta.validation.Valid;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/purchase-transactions")
@@ -28,6 +29,7 @@ public class PurchaseTransactionController {
                 .create(
                         PurchaseTransaction
                                 .create(
+                                        UUID.randomUUID(),
                                         request.description(),
                                         request.transactionDate(),
                                         request.amount()
@@ -43,10 +45,11 @@ public class PurchaseTransactionController {
     }
 
     @GetMapping("/{id}")
-    public String getByIdAndCurrency(
+    public ResponseEntity<GetPurchaseTransactionResponse> getByIdAndCurrency(
             @PathVariable String id,
-            @Valid GetPurchaseTransactionByCurrencyRequest request
+            @RequestParam String country
     ) {
-        return "retrieved";
+        CountryPurchaseTransaction transactionInCountryCurrency = purchaseTransactionService.getTransactionInCountryCurrency(UUID.fromString(id), country);
+        return ResponseEntity.ok(GetPurchaseTransactionResponse.create(transactionInCountryCurrency));
     }
 }

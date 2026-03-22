@@ -1,6 +1,8 @@
 package com.italo.transactions.api;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.italo.transactions.domain.exception.EntityNotFoundException;
+import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +40,17 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(buildValidationErrorResponse("Request validation failed", fieldErrors));
+    }
+
+    @ExceptionHandler(ExchangeRateNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleExchangeRateNotFound(ExchangeRateNotFoundException exception) {
+        return ResponseEntity.unprocessableContent()
+                .body(buildBusinessErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleEntityNotFound(EntityNotFoundException exception) {
+        return ResponseEntity.notFound().build();
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -107,6 +121,18 @@ public class GlobalExceptionHandler {
             current = current.getCause();
         }
         return null;
+    }
+
+    private ApiErrorResponse buildBusinessErrorResponse(
+            String message
+    ) {
+        return new ApiErrorResponse(
+                Instant.now(),
+                HttpStatus.UNPROCESSABLE_CONTENT.value(),
+                message,
+                message,
+                Collections.emptyList()
+        );
     }
 
     private ApiErrorResponse buildValidationErrorResponse(

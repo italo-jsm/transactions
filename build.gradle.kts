@@ -37,8 +37,12 @@ dependencies {
 
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.testcontainers:junit-jupiter:1.20.4")
+	testImplementation("org.testcontainers:mockserver:1.20.4")
+	testImplementation("org.mock-server:mockserver-client-java:5.15.0")
 	testRuntimeOnly("com.h2database:h2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
