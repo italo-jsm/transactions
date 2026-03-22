@@ -3,6 +3,7 @@ package com.italo.transactions.api.purchase;
 import com.italo.transactions.api.GlobalExceptionHandler;
 import com.italo.transactions.domain.exception.EntityNotFoundException;
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import com.italo.transactions.domain.model.CountryPurchaseTransaction;
 import com.italo.transactions.domain.service.PurchaseTransactionService;
 import org.junit.jupiter.api.Test;
@@ -158,6 +159,21 @@ class PurchaseTransactionControllerTest {
                 .andExpect(jsonPath("$.status").value(422))
                 .andExpect(jsonPath("$.error").value("Exchange rate not found within 6 months for the specified country"))
                 .andExpect(jsonPath("$.message").value("Exchange rate not found within 6 months for the specified country"));
+    }
+
+    @Test
+    void shouldReturnGatewayTimeoutWhenTreasuryTakesTooLongToRespond() throws Exception {
+        UUID transactionId = UUID.randomUUID();
+
+        when(service.getTransactionInCountryCurrency(eq(transactionId), eq("Brazil")))
+                .thenThrow(new ExternalDependencyTimeoutException("Treasury API did not respond within 3 seconds", null));
+
+        mockMvc.perform(get("/purchase-transactions/{id}", transactionId)
+                        .param("country", "Brazil"))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.status").value(504))
+                .andExpect(jsonPath("$.error").value("Gateway Timeout"))
+                .andExpect(jsonPath("$.message").value("Treasury API did not respond within 3 seconds"));
     }
 
     private ReloadableResourceBundleMessageSource messageSource() {

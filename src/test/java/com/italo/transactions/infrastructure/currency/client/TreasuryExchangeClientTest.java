@@ -1,7 +1,9 @@
 package com.italo.transactions.infrastructure.currency.client;
 
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import com.italo.transactions.infrastructure.currency.client.dto.ExchangeRateResponse;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.mockserver.client.MockServerClient;
 import org.mockserver.model.MediaType;
@@ -10,7 +12,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -152,5 +157,57 @@ class TreasuryExchangeClientTest {
         );
 
         assertThat(client.getAllCurrencies()).isEmpty();
+    }
+
+    @Test
+    void shouldThrowTimeoutExceptionWhenTreasuryTakesTooLongToRespond() {
+        HttpServer server = null;
+        try {
+            server = HttpServer.create(new InetSocketAddress(0), 0);
+            server.createContext(PATH, exchange -> {
+                try {
+                    Thread.sleep(2_000);
+                    byte[] responseBody = """
+                            {
+                              "data": [
+                                {
+                                  "country_currency_desc": "Brazil-Real",
+                                  "exchange_rate": "5.4321",
+                                  "record_date": "2026-03-19",
+                                  "effective_date": "2026-03-20"
+                                }
+                              ]
+                            }
+                            """.getBytes();
+                    exchange.getResponseHeaders().add("Content-Type", "application/json");
+                    exchange.sendResponseHeaders(200, responseBody.length);
+                    try (OutputStream outputStream = exchange.getResponseBody()) {
+                        outputStream.write(responseBody);
+                    }
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    exchange.close();
+                }
+            });
+            server.start();
+
+            TreasuryExchangeClient client = new TreasuryExchangeClient(
+                    "http://localhost:" + server.getAddress().getPort(),
+                    PATH,
+                    Duration.ofSeconds(1),
+                    false
+            );
+
+            assertThatThrownBy(() -> client.findRate("Brazil-Real", LocalDate.of(2026, 3, 20)))
+                    .isInstanceOf(ExternalDependencyTimeoutException.class)
+                    .hasMessage("Treasury API did not respond within 1 seconds");
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        } finally {
+            if (server != null) {
+                server.stop(0);
+            }
+        }
     }
 }

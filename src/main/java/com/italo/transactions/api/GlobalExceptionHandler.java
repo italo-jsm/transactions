@@ -3,6 +3,7 @@ package com.italo.transactions.api;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.italo.transactions.domain.exception.EntityNotFoundException;
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleExchangeRateNotFound(ExchangeRateNotFoundException exception) {
         return ResponseEntity.unprocessableContent()
                 .body(buildBusinessErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ExternalDependencyTimeoutException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalDependencyTimeout(ExternalDependencyTimeoutException exception) {
+        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
+                .body(buildErrorResponse(HttpStatus.GATEWAY_TIMEOUT, exception.getMessage()));
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -145,6 +152,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 message,
                 fieldErrors
+        );
+    }
+
+    private ApiErrorResponse buildErrorResponse(HttpStatus status, String message) {
+        return new ApiErrorResponse(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                Collections.emptyList()
         );
     }
 
