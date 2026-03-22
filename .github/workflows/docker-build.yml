@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - master
   pull_request:
   workflow_dispatch:
 
@@ -69,6 +68,7 @@ jobs:
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "image_name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "branch_tag=$(echo '${{ github.ref_name }}' | tr '[:upper:]' '[:lower:]' | tr '/' '-')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -86,6 +86,9 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.sha_short }}
+          tags: |
+            ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.sha_short }}
+            ${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.branch_tag }}
+            ${{ github.ref_name == 'main' && format('{0}:latest', steps.vars.outputs.image_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
