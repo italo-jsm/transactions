@@ -30,10 +30,8 @@ class TreasuryCurrencyConverterTest {
     private TreasuryCurrencyConverter treasuryCurrencyConverter;
 
     @Test
-    void shouldInitializeAvailableCurrenciesFromTreasuryApi() {
+    void shouldLoadAvailableCurrenciesFromTreasuryApiOnDemand() {
         when(treasuryExchangeClient.getAllCurrencies()).thenReturn(List.of("Brazil-Real", "Canada-Dollar"));
-
-        treasuryCurrencyConverter.init();
 
         PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
                 UUID.randomUUID(),
@@ -55,14 +53,13 @@ class TreasuryCurrencyConverterTest {
 
         assertThat(convertedTransaction).isPresent();
         assertThat(convertedTransaction.orElseThrow().convertedPurchasedAmount()).isEqualByComparingTo("525.00");
+        verify(treasuryExchangeClient).getAllCurrencies();
         verify(treasuryExchangeClient).findRate("Brazil-Real", purchaseTransaction.transactionDate());
     }
 
     @Test
     void shouldReturnEmptyWhenCountryIsNotPresentInAvailableCurrencies() {
         when(treasuryExchangeClient.getAllCurrencies()).thenReturn(List.of("Canada-Dollar"));
-
-        treasuryCurrencyConverter.init();
 
         PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
                 UUID.randomUUID(),
@@ -81,8 +78,6 @@ class TreasuryCurrencyConverterTest {
     void shouldReturnEmptyWhenTreasuryClientDoesNotReturnRate() {
         when(treasuryExchangeClient.getAllCurrencies()).thenReturn(List.of("Brazil-Real"));
 
-        treasuryCurrencyConverter.init();
-
         PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
                 UUID.randomUUID(),
                 "Notebook",
@@ -100,8 +95,15 @@ class TreasuryCurrencyConverterTest {
     }
 
     @Test
-    void shouldMatchCountryIgnoringCase() {
-        assertThat(TreasuryCurrencyConverter.containsIgnoreCase("Brazil-Real", "BRAZIL")).isTrue();
-        assertThat(TreasuryCurrencyConverter.containsIgnoreCase("Brazil-Real", "canada")).isFalse();
+    void shouldMatchCountryIgnoringCaseAndWhitespace() {
+        assertThat(TreasuryCurrencyConverter.matchesCountry("Brazil-Real", " BRAZIL ")).isTrue();
+        assertThat(TreasuryCurrencyConverter.matchesCountry("Brazil-Real", "Brazil-Real")).isTrue();
+        assertThat(TreasuryCurrencyConverter.matchesCountry("Brazil-Real", "canada")).isFalse();
+        assertThat(TreasuryCurrencyConverter.matchesCountry("Brazil-Real", "")).isFalse();
+    }
+
+    @Test
+    void shouldNotMatchCountryUsingSubstring() {
+        assertThat(TreasuryCurrencyConverter.matchesCountry("Brazil-Real", "zil")).isFalse();
     }
 }

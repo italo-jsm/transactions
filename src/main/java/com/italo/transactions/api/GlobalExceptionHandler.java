@@ -2,6 +2,7 @@ package com.italo.transactions.api;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.italo.transactions.domain.exception.EntityNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyException;
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
 import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import jakarta.validation.ConstraintViolation;
@@ -14,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -55,6 +57,12 @@ public class GlobalExceptionHandler {
                 .body(buildErrorResponse(HttpStatus.GATEWAY_TIMEOUT, exception.getMessage()));
     }
 
+    @ExceptionHandler(ExternalDependencyException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalDependency(ExternalDependencyException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(buildErrorResponse(HttpStatus.BAD_GATEWAY, exception.getMessage()));
+    }
+
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleEntityNotFound(EntityNotFoundException exception) {
         return ResponseEntity.notFound().build();
@@ -87,6 +95,33 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST.getReasonPhrase(),
                         "Malformed request body",
                         List.of()
+                ));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        String field = exception.getName();
+        if ("id".equals(field)) {
+            return ResponseEntity.badRequest()
+                    .body(buildValidationErrorResponse(
+                            "Request validation failed",
+                            List.of(new ApiErrorResponse.FieldValidationError("id", "id must be a valid UUID"))
+                    ));
+        }
+
+        return ResponseEntity.badRequest()
+                .body(buildValidationErrorResponse(
+                        "Request validation failed",
+                        List.of(new ApiErrorResponse.FieldValidationError(field, "invalid value"))
+                ));
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRequest(InvalidRequestException exception) {
+        return ResponseEntity.badRequest()
+                .body(buildValidationErrorResponse(
+                        "Request validation failed",
+                        List.of(new ApiErrorResponse.FieldValidationError(exception.getField(), exception.getMessage()))
                 ));
     }
 

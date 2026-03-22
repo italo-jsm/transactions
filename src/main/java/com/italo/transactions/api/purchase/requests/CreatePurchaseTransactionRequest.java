@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 public record CreatePurchaseTransactionRequest(
 
@@ -16,13 +15,13 @@ public record CreatePurchaseTransactionRequest(
         @Size(max = 50, message = "{validation.purchase.description.size}")
         String description,
 
-        @NotNull(message = "{validation.purchase.transactionDate.required}")
+        @NotBlank(message = "{validation.purchase.transactionDate.required}")
         @JsonFormat(pattern = "yyyy-MM-dd")
-        LocalDate transactionDate,
+        String transactionDate,
 
         @NotNull(message = "{validation.purchase.amount.required}")
         @DecimalMin(value = "0.01", inclusive = true, message = "{validation.purchase.amount.min}")
-        @Digits(integer = 12, fraction = 2, message = "{validation.purchase.amount.digits}")
+        @Digits(integer = 12, fraction = 10, message = "{validation.purchase.amount.digits}")
         BigDecimal amount
 
 ) {}

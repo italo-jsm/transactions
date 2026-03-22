@@ -70,6 +70,29 @@ class PurchaseTransactionControllerTest {
     }
 
     @Test
+    void shouldRoundPurchaseAmountToNearestCentWhenCreatingTransaction() throws Exception {
+        UUID generatedId = UUID.randomUUID();
+        ArgumentCaptor<com.italo.transactions.domain.model.PurchaseTransaction> transactionCaptor =
+                ArgumentCaptor.forClass(com.italo.transactions.domain.model.PurchaseTransaction.class);
+
+        when(service.create(any())).thenReturn(generatedId);
+
+        mockMvc.perform(post("/purchase-transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description": "Notebook",
+                                  "transactionDate": "2026-03-20",
+                                  "amount": 1999.995
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        verify(service).create(transactionCaptor.capture());
+        assertThat(transactionCaptor.getValue().purchaseAmount()).isEqualByComparingTo("2000.00");
+    }
+
+    @Test
     void shouldReturnTransactionConvertedToCountryCurrency() throws Exception {
         UUID transactionId = UUID.randomUUID();
         CountryPurchaseTransaction countryPurchaseTransaction = new CountryPurchaseTransaction(
@@ -135,6 +158,24 @@ class PurchaseTransactionControllerTest {
     }
 
     @Test
+    void shouldReturnFieldErrorWhenTransactionDateIsImpossible() throws Exception {
+        mockMvc.perform(post("/purchase-transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description": "Notebook",
+                                  "transactionDate": "2026-02-30",
+                                  "amount": 0.01
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Request validation failed"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("transactionDate"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("transactionDate must be a valid date in yyyy-MM-dd format"));
+    }
+
+    @Test
     void shouldReturnNotFoundWhenPurchaseTransactionDoesNotExist() throws Exception {
         UUID transactionId = UUID.randomUUID();
 
@@ -174,6 +215,28 @@ class PurchaseTransactionControllerTest {
                 .andExpect(jsonPath("$.status").value(504))
                 .andExpect(jsonPath("$.error").value("Gateway Timeout"))
                 .andExpect(jsonPath("$.message").value("Treasury API did not respond within 3 seconds"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenIdIsNotAValidUuid() throws Exception {
+        mockMvc.perform(get("/purchase-transactions/{id}", "not-a-uuid")
+                        .param("country", "Brazil"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("id"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("id must be a valid UUID"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenCountryIsBlank() throws Exception {
+        UUID transactionId = UUID.randomUUID();
+
+        mockMvc.perform(get("/purchase-transactions/{id}", transactionId)
+                        .param("country", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("country"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("country is required"));
     }
 
     private ReloadableResourceBundleMessageSource messageSource() {

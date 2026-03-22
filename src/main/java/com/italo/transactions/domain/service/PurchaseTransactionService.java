@@ -29,7 +29,7 @@ public class PurchaseTransactionService {
                 .convertPurchaseToCountryPurchaseTransaction(country, purchaseTransaction)
                 .orElseThrow(() -> new ExchangeRateNotFoundException("Exchange rate not for the specified country"));
         LocalDate limitDate = countryPurchaseTransaction.transactionDate().minusMonths(6);
-        if(countryPurchaseTransaction.recordDate().isAfter(limitDate)){
+        if(!countryPurchaseTransaction.recordDate().isBefore(limitDate)){
             return countryPurchaseTransaction;
         }else throw  new ExchangeRateNotFoundException("Exchange rate not found within 6 months for the specified country");
     }

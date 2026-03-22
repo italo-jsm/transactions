@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyException;
 import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import com.italo.transactions.infrastructure.currency.client.dto.ExchangeRateResponse;
 import com.italo.transactions.infrastructure.currency.client.dto.TreasuryApiResponse;
@@ -16,7 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.net.SocketTimeoutException;
@@ -79,6 +82,8 @@ public class TreasuryExchangeClient {
                     .body(TreasuryApiResponse.class);
         } catch (ResourceAccessException exception) {
             throw mapTimeoutException(exception);
+        } catch (RestClientException exception) {
+            throw mapDependencyException(exception);
         }
 
         if (response == null || response.data() == null || response.data().isEmpty()) {
@@ -108,6 +113,8 @@ public class TreasuryExchangeClient {
                     .body(TreasuryApiResponse.class);
         } catch (ResourceAccessException exception) {
             throw mapTimeoutException(exception);
+        } catch (RestClientException exception) {
+            throw mapDependencyException(exception);
         }
 
         if (response == null || response.data() == null) {
@@ -125,7 +132,18 @@ public class TreasuryExchangeClient {
             return new ExternalDependencyTimeoutException("Treasury API did not respond within " + timeout.toSeconds() + " seconds", exception);
         }
 
-        return exception;
+        return new ExternalDependencyException("Treasury API is unavailable", exception);
+    }
+
+    private ExternalDependencyException mapDependencyException(RestClientException exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            return new ExternalDependencyException(
+                    "Treasury API responded with status " + responseException.getStatusCode().value(),
+                    exception
+            );
+        }
+
+        return new ExternalDependencyException("Treasury API is unavailable", exception);
     }
 
     private boolean isTimeout(Throwable throwable) {

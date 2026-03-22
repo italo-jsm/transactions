@@ -1,6 +1,7 @@
 package com.italo.transactions.domain.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public record PurchaseTransaction(
                 uuid,
                 description,
                 transactionDate,
-                purchaseAmount
+                purchaseAmount.setScale(2, RoundingMode.HALF_UP)
         );
     }
 }

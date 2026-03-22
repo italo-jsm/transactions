@@ -83,6 +83,30 @@ class PurchaseTransactionServiceTest {
     }
 
     @Test
+    void shouldReturnTransactionConvertedToCountryCurrencyWhenRateIsExactlySixMonthsBeforePurchaseDate() {
+        UUID transactionId = UUID.randomUUID();
+        PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
+                transactionId,
+                "My product",
+                LocalDate.of(2026, 3, 21),
+                new BigDecimal("100.00")
+        );
+        CountryPurchaseTransaction convertedTransaction = CountryPurchaseTransaction.create(
+                purchaseTransaction,
+                new BigDecimal("5.25"),
+                LocalDate.of(2025, 9, 21)
+        );
+
+        when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));
+        when(currencyConverter.convertPurchaseToCountryPurchaseTransaction("Brazil", purchaseTransaction))
+                .thenReturn(Optional.of(convertedTransaction));
+
+        CountryPurchaseTransaction result = purchaseTransactionService.getTransactionInCountryCurrency(transactionId, "Brazil");
+
+        assertThat(result).isEqualTo(convertedTransaction);
+    }
+
+    @Test
     void shouldThrowEntityNotFoundWhenPurchaseTransactionDoesNotExist() {
         UUID transactionId = UUID.randomUUID();
 
@@ -113,7 +137,7 @@ class PurchaseTransactionServiceTest {
     }
 
     @Test
-    void shouldThrowExchangeRateNotFoundWhenRateIsNotWithinSixMonthsWindow() {
+    void shouldThrowExchangeRateNotFoundWhenRateIsOlderThanSixMonthsWindow() {
         UUID transactionId = UUID.randomUUID();
         PurchaseTransaction purchaseTransaction = PurchaseTransaction.create(
                 transactionId,
@@ -124,7 +148,7 @@ class PurchaseTransactionServiceTest {
         CountryPurchaseTransaction convertedTransaction = CountryPurchaseTransaction.create(
                 purchaseTransaction,
                 new BigDecimal("5.25"),
-                LocalDate.of(2025, 9, 21)
+                LocalDate.of(2025, 9, 20)
         );
 
         when(purchaseTransactionsRepository.findBydId(transactionId)).thenReturn(Optional.of(purchaseTransaction));

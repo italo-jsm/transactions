@@ -1,6 +1,7 @@
 package com.italo.transactions.infrastructure.currency.client;
 
 import com.italo.transactions.domain.exception.ExchangeRateNotFoundException;
+import com.italo.transactions.domain.exception.ExternalDependencyException;
 import com.italo.transactions.domain.exception.ExternalDependencyTimeoutException;
 import com.italo.transactions.infrastructure.currency.client.dto.ExchangeRateResponse;
 import com.sun.net.httpserver.HttpServer;
@@ -209,5 +210,30 @@ class TreasuryExchangeClientTest {
                 server.stop(0);
             }
         }
+    }
+
+    @Test
+    void shouldThrowExternalDependencyExceptionWhenTreasuryRespondsWithServerError() {
+        MockServerClient mockServerClient = new MockServerClient(MOCK_SERVER.getHost(), MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT));
+        mockServerClient.reset();
+        mockServerClient
+                .when(request()
+                        .withPath(PATH)
+                        .withQueryStringParameters(
+                                Parameter.param("fields", "country_currency_desc,exchange_rate,record_date,effective_date"),
+                                Parameter.param("filter", "country_currency_desc:in:(Brazil-Real),record_date:lte:2026-03-20"),
+                                Parameter.param("sort", "-record_date"),
+                                Parameter.param("page[size]", "1")
+                        ))
+                .respond(response().withStatusCode(500));
+
+        TreasuryExchangeClient client = new TreasuryExchangeClient(
+                "http://" + MOCK_SERVER.getHost() + ":" + MOCK_SERVER.getMappedPort(MOCK_SERVER_PORT),
+                PATH
+        );
+
+        assertThatThrownBy(() -> client.findRate("Brazil-Real", LocalDate.of(2026, 3, 20)))
+                .isInstanceOf(ExternalDependencyException.class)
+                .hasMessage("Treasury API responded with status 500");
     }
 }
