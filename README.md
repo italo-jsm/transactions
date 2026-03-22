@@ -22,11 +22,16 @@ The current `docker compose` setup starts the API and PostgreSQL together:
 docker compose up -d --build
 ```
 
-To check the container status:
+Wait until both containers are healthy before running the API curls:
 
 ```bash
 docker compose ps
 ```
+
+The expected status is:
+
+- `transactions-postgres` as `healthy`
+- `transactions-app` as `healthy`
 
 To stop the containers and remove the database volume:
 
