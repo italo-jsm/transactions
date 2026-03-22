@@ -1,5 +1,19 @@
 # Transactions
 
+## Repository Note
+
+If you are reviewing this project in GitHub, it is worth opening the Actions tab and checking the workflow run for this branch. The pipeline is intentionally split into `test`, `build`, and `push` jobs so you can quickly verify how quality gates and image delivery are organized.
+
+## Image Versioning and Rollback
+
+Published container images keep multiple tags in GHCR:
+
+- the short commit hash for immutable traceability
+- the branch tag, such as `main`
+- `latest` for the most recent image published from `main`
+
+This policy keeps deployments easy to track and makes rollback straightforward. If a new release causes problems, it is possible to redeploy a previous image directly by its commit hash without guessing which code produced it.
+
 ## Running with Docker Compose
 
 The current `docker compose` setup starts the API and PostgreSQL together:
